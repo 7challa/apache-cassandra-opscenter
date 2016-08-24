@@ -1,0 +1,71 @@
+---
+- hosts: all
+  serial: 1
+  any_errors_fatal: true
+  gather_facts: false
+  sudo: yes
+
+  tasks:
+
+    - name: Clean soft link  
+      file: path=/opt/app/cassandra state=absent
+
+    - name: Clean the cassandra software
+      file: path=/opt/app/{{ apache_cassandra_version }} state=absent
+
+    - name: Ensure cassandra group is available
+      group: name={{ cassandra_group }} state=present
+      register: group_result
+
+    - name: Ensure cassandra user is available 
+      user: name={{ cassandra_user }} group={{ cassandra_group }} state=present
+      when: group_result|success
+      
+    - name: Create cassandra data root directory
+      file: path={{ cassandra_data_root_dir }} owner={{ cassandra_user }} group={{ cassandra_group }} mode=0750 state=directory
+
+    - name: Create subdirectories under data root directory
+      file: path={{ cassandra_data_root_dir }}/{{ item }} owner={{ cassandra_user }} group={{ cassandra_group }} mode=0750 state=directory
+      with_items:
+         - data
+         - commitlog
+         - saved_caches
+                 
+    - name: Create cassandra log root directory
+      file: path={{ cassandra_log_root_dir }} owner={{ cassandra_user }} group={{ cassandra_group }} mode=0755 state=directory
+
+    - name: Create cassandra log directory
+      file: path={{ cassandra_log_root_dir }}/{{ item }} owner={{ cassandra_user }} group={{ cassandra_group }} mode=0755 state=directory      
+      with_items:
+          - "cassandra"
+          - "datastax-agent"
+           
+    - name: Install {{ apache_cassandra_version }}
+      unarchive: src={{ play_root}}/files/{{ apache_cassandra_version }}-bin.tar.gz dest=/opt/app/ owner={{ cassandra_user }} group={{ cassandra_group }}
+       
+    - name: Update cassandra.yaml and cassandra-env.sh
+      template: src={{ play_root }}/templates/{{ item }}.j2 dest=/opt/app/{{ apache_cassandra_version }}/conf/{{ item }} owner={{ cassandra_user }} group={{ cassandra_group }} mode=0644
+      with_items:
+          - "cassandra.yaml"
+          - "cassandra-env.sh"
+          - "logback.xml"
+
+    - name: Update cassandra-topology.properties
+      copy: src={{ play_root }}/files/cassandra-topology.properties.{{ cassandra_cluster_name }} dest=/opt/app/{{ apache_cassandra_version }}/conf/cassandra-topology.properties owner={{ cassandra_user }} group={{ cassandra_group }} mode=0644
+
+    - name: Create scripts directory
+      file: path=/opt/app/{{ apache_cassandra_version }}/scripts owner={{ cassandra_user }} group={{ cassandra_group }} mode=0750 state=directory
+
+    - name: Setup cassandra startup scripts
+      template: src={{ play_root }}/templates/{{ item }}.j2 dest=/opt/app/{{ apache_cassandra_version }}/scripts/{{ item }} owner={{ cassandra_user }} group={{ cassandra_group }} mode=0750
+      with_items:
+          - "startCassandra.sh"
+          - "stopCassandra.sh"
+        
+    - name: Set permissions 
+      file: path=/opt/app/{{ item }} owner={{ cassandra_user }} group={{ cassandra_group }} mode=0754 recurse=yes
+      with_items:
+           - "{{ apache_cassandra_version }}"
+          
+    - name: Create dse soft link
+      file: src=/opt/app/{{ apache_cassandra_version }} dest={{ soft_link }} owner={{ cassandra_user }} group={{ cassandra_group }} state=link   

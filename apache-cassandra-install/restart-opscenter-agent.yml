@@ -1,0 +1,14 @@
+ - hosts: all
+   sudo: yes
+   #serial: 1
+   sudo_user: cassandra 
+
+   tasks:
+     - name: Stop OpsCenter Agent
+       shell: /opt/app/opscenter/agent/scripts/stop-datastax-agent.sh 
+       ignore_errors: True
+     
+     - pause: seconds=10
+
+     - name: Start OpsCenter Agent
+       shell: nohup /opt/app/opscenter/agent/scripts/start-datastax-agent.sh &

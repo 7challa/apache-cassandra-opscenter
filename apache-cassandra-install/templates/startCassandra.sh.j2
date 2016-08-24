@@ -1,0 +1,10 @@
+#!/bin/sh
+
+export JAVA_HOME=/opt/app/{{ jdk_version }}
+export PATH=$JAVA_HOME/bin:$PATH
+export CASSANDRA_HOME={{ cassandra_home }}
+
+export PATH="$PATH:$CASSANDRA_HOME/bin"
+
+export CASSANDRA_PID_FILE="{{ cassandra_pid_file }}"
+$CASSANDRA_HOME/bin/cassandra -p $CASSANDRA_PID_FILE

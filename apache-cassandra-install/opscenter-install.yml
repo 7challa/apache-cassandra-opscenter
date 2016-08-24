@@ -1,0 +1,41 @@
+---
+- hosts: all
+  gather_facts: false
+  sudo: yes
+
+  tasks:
+    - name: Install OpsCenter - {{ opscenter_version }}
+      unarchive: src={{ play_root}}/files/{{ opscenter_version }}.tar.gz dest=/opt/app/ owner={{ cassandra_user }} group={{ cassandra_group }}
+
+    - name: Setup OpsCenter scripts directory
+      file: path=/opt/app/{{ opscenter_version }}/scripts owner={{ cassandra_user }} group={{ cassandra_group }} mode=0750 state=directory
+
+    - name: Setup OpsCenter scripts
+      template: src={{ play_root}}/templates/OpsCenter/{{ item }}.j2 dest=/opt/app/{{ opscenter_version }}/scripts/{{ item }} owner={{ cassandra_user }} group={{ cassandra_group }} mode=0750
+      with_items: 
+           - "startOpsCenterDaemon.sh"
+           - "stopOpsCenterDaemon.sh"
+
+    - name: Create datastax-agent scripts directory
+      file: path=/opt/app/{{ opscenter_version }}/agent/scripts owner={{ cassandra_user }} group={{ cassandra_group }} mode=0750 state=directory
+
+
+    - name: Setup OpsCenter Agent scripts
+      template: src={{ play_root}}/templates/OpsCenterAgent/{{ item }}.j2 dest=/opt/app/{{ opscenter_version }}/agent//scripts/{{ item }} owner={{ cassandra_user }} group={{ cassandra_group }} mode=0750
+      with_items: 
+           - "start-datastax-agent.sh"
+           - "stop-datastax-agent.sh"
+
+    - name: Set up OpsCenter Agent
+      template: src={{ play_root}}/templates/OpsCenterAgent/{{ item }}.j2 dest=/opt/app/{{ opscenter_version }}/agent/conf/{{ item }} owner={{ cassandra_user }} group={{ cassandra_group }} mode=0750
+      with_items: 
+           - "address.yaml"
+           - "log4j.properties"
+
+    - name: Set permissions 
+      file: path=/opt/app/{{ item }} owner={{ cassandra_user }} group={{ cassandra_group }} mode=0750 recurse=yes
+      with_items:
+           - "{{ opscenter_version }}"
+          
+    - name: Create opscenter soft link
+      file: src=/opt/app/{{ opscenter_version }} dest=/opt/app/opscenter owner={{ cassandra_user }} group={{ cassandra_group }} state=link    

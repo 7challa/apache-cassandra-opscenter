@@ -1,0 +1,16 @@
+# Clean up playbook to test install and tear down 
+---
+- hosts: all
+  serial: 1
+  any_errors_fatal: true
+  gather_facts: false
+  sudo: yes
+
+  tasks:
+
+    - name: Clean soft link
+      file: path=/opt/app/cassandra state=absent
+
+    - name: Clean the cassandra software
+      file: path=/opt/app/{{ apache_cassandra_version }} state=absent
+
